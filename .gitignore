@@ -1,0 +1,23 @@
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.swarm/
+ruvector.db
+.claude/settings.local.json
+
+# PlatformIO (кэш сборки и скачанные тулчейны)
+.pio/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Windows
+Thumbs.db
+desktop.ini
