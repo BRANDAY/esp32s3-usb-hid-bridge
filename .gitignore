@@ -1,15 +1,18 @@
-# Ruflo local secrets and runtime data
+# --- Ruflo / Claude tooling (kept local, not published) ---
+.claude/
+.claude-flow/
+.agents/
+.swarm/
+.mcp.json
+CLAUDE.md
+ruvector.db
+
+# Secrets and env
 .env
 .env.local
 .env.*.local
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/sessions/
-.swarm/
-ruvector.db
-.claude/settings.local.json
 
-# PlatformIO (кэш сборки и скачанные тулчейны)
+# PlatformIO (build cache and downloaded toolchains)
 .pio/
 .vscode/
 
