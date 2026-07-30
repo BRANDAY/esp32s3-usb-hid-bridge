@@ -46,10 +46,9 @@ not have USB-OTG.
 
 | Path | What it is |
 |---|---|
-| `src/hid_composite.cpp` | Main firmware: USB keyboard + mouse + CDC (env `s3hid`) |
-| `src/main.cpp` | Learning firmware #1: LED blink + serial echo (env `s3mini`) |
+| `src/main.cpp` | Firmware: USB keyboard + mouse + CDC serial command interface |
 | `scripts/serial_chat.py` | Host-side console for sending commands (Python + pyserial) |
-| `platformio.ini` | Build config; two sketches selected via `build_src_filter` |
+| `platformio.ini` | Build configuration (PlatformIO), environment `s3hid` |
 | `docs/esp32-guide.md` | Beginner's guide to the ESP32 (in Russian) |
 
 ## Requirements
@@ -60,14 +59,12 @@ not have USB-OTG.
 
 ## Build & flash
 
-The default environment is `s3hid` (the keyboard/mouse firmware).
-
 ```bash
 # 1) Put the board into download mode (needed for the HID firmware, see note):
 #    unplug USB, hold BOOT, plug USB back in, release BOOT.
 
 # 2) Build and upload:
-python -m platformio run -e s3hid -t upload
+python -m platformio run -t upload
 
 # 3) Power-cycle the board (unplug/replug, or press RST) so it boots the app.
 ```
@@ -118,19 +115,6 @@ move 150 -40
 click
 ```
 
-## The two firmwares
-
-The project builds different firmware per PlatformIO environment
-(`-e <env>`), sharing one `src/` folder via `build_src_filter`:
-
-- **`s3hid`** (default) — the USB keyboard/mouse/serial bridge above.
-- **`s3mini`** — a first learning sketch: blinks the LED and echoes serial
-  commands (`ARDUINO_USB_MODE=1`, a plain COM port).
-
-```bash
-python -m platformio run -e s3mini -t upload   # flash the blink/echo firmware
-```
-
 ## How it works
 
 PlatformIO compiles the C++ into `firmware.bin`, esptool writes it to the
@@ -146,4 +130,4 @@ For USB HID on the ESP32-S3 two things are essential and easy to miss:
    CDC interface, guaranteeing the COM port shows up alongside the keyboard
    and mouse.
 
-Both are configured in `platformio.ini` (env `s3hid`) and `src/hid_composite.cpp`.
+Both are configured in `platformio.ini` (env `s3hid`) and `src/main.cpp`.
