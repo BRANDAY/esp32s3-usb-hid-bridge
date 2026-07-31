@@ -16,7 +16,10 @@ the board performs it as genuine input.
 
 > This is a personal learning project for getting started with the ESP32-S3
 > and understanding how USB HID works. Use it only on machines you own or are
-> authorized to test.
+> authorized to control.
+>
+> **Intended uses:** accessibility / switch access, KVM control, hardware-in-the-loop
+> test automation, macro pads and stream decks, and presentation remotes.
 
 ## Target hardware
 
@@ -162,3 +165,7 @@ For USB HID on the ESP32-S3 two things are essential and easy to miss:
    and mouse.
 
 Both are configured in `platformio.ini` (env `s3hid`) and `src/main.cpp`.
+
+## License
+
+Released under the [MIT License](LICENSE).
