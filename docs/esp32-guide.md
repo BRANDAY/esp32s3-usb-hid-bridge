@@ -1,194 +1,188 @@
-# ESP32 с нуля — гайд для старта
+# ESP32 from scratch — a starter guide
 
-Этот файл — твоя точка входа. Читай сверху вниз, пробуй команды, а когда
-захочешь следующий шаг — просто попроси Claude в этой папке.
+This is your entry point. Read top to bottom, try the commands, and when you
+want the next step, just ask.
 
-## 1. Что такое ESP32
+## 1. What an ESP32 is
 
-Микроконтроллер — это маленький компьютер на одном чипе: процессор, память и
-«ножки» (выводы), которыми он управляет внешним миром. В отличие от обычного
-компьютера:
+A microcontroller is a tiny computer on a single chip: a processor, memory, and
+"pins" it uses to control the outside world. Unlike a normal computer:
 
-- нет операционной системы, окон и файлов — крутится только твоя программа;
-- программа стартует мгновенно при подаче питания и работает, пока есть ток;
-- зато он напрямую дёргает ножками: зажигает светодиоды, читает кнопки,
-  датчики, крутит моторы.
+- there is no operating system, no windows, no files — only your program runs;
+- the program starts instantly on power-up and runs as long as it has power;
+- in exchange it drives pins directly: lighting LEDs, reading buttons and
+  sensors, spinning motors.
 
-ESP32 — микроконтроллер фирмы Espressif и, пожалуй, лучший выбор для обучения:
+The ESP32 is a microcontroller family from Espressif and a great choice for
+learning. This project uses the **ESP32-S3**:
 
-| Характеристика | ESP32 (классика) | Для сравнения: Arduino Uno |
+| Feature | ESP32-S3 | For comparison: Arduino Uno |
 |---|---|---|
-| Процессор | 2 ядра, 240 МГц | 1 ядро, 16 МГц |
-| ОЗУ | 520 КБ | 2 КБ |
-| Flash (под прошивку) | 4 МБ | 32 КБ |
-| Wi-Fi | есть | нет |
-| Bluetooth | есть (Classic + BLE) | нет |
+| Processor | 2 cores, 240 MHz | 1 core, 16 MHz |
+| RAM | 512 KB (+ 2 MB PSRAM) | 2 KB |
+| Flash (for firmware) | 4 MB | 32 KB |
+| Wi-Fi | yes | no |
+| Bluetooth | BLE (no Classic) | no |
+| Native USB | yes (USB-OTG) | no |
 
-За те же деньги — в 15 раз быстрее, в сотни раз больше памяти, плюс радио.
-Wi-Fi на борту означает, что плата может стать веб-сервером, слать данные в
-интернет или управляться с телефона.
+For roughly the same price you get orders of magnitude more speed and memory,
+plus a radio and native USB.
 
-## 2. Какая именно у тебя «mini»
+## 2. This board: LOLIN S3 Mini
 
-«ESP32 mini» — это формат платы, а чипы на них ставят разные. Три самых
-распространённых варианта:
+| | |
+|---|---|
+| Board | WEMOS **LOLIN S3 Mini** |
+| Chip | ESP32-S3 (silk screen on the metal can reads `ESP32-S3`) |
+| USB | **native USB built into the chip** — no separate USB-UART chip |
+| Port | shows up as `VID:PID=303A:...` in the port list |
+| On-board LED | RGB (WS2812) on GPIO47 |
 
-| Плата | Чип | Надпись на металлической крышке | LED на плате |
-|---|---|---|---|
-| MH-ET LIVE MiniKit / D1 mini ESP32 | ESP32 (классика, 2 ядра) | ESP32-WROOM-32 | GPIO2 |
-| LOLIN S2 mini | ESP32-S2 (1 ядро, без Bluetooth) | ESP32-S2 | GPIO15 |
-| LOLIN C3 mini | ESP32-C3 (1 ядро RISC-V) | ESP32-C3 | GPIO7 |
-| **LOLIN S3 mini — наша плата** | ESP32-S3 (2 ядра + 2МБ PSRAM) | ESP32-S3 | RGB (WS2812) на GPIO47 |
-
-> ✅ Мы уже определили: у тебя **ESP32-S3** (порт COM5). Конфигурация
-> `s3mini` стоит по умолчанию, команды ниже работают без доп. флагов.
-> Вместо обычного светодиода тут RGB: `digitalWrite(LED_BUILTIN, ...)`
-> мигает белым, а позже научимся управлять цветом.
-
-Как определить точно — подключи плату по USB и выполни:
+To list serial ports and confirm the board:
 
 ```
 python -m serial.tools.list_ports -v
 ```
 
-Смотри на VID в выводе:
+A `VID:PID=303A:...` entry means the USB is built into the chip (that is the
+S3 / S2 / C3 family). Classic ESP32 boards instead show a separate USB-UART
+chip (`1A86` for CH340, `10C4` for CP210x).
 
-- `VID:PID=1A86:...` или `10C4:...` — на плате отдельный USB-чип →
-  **классическая ESP32 mini** (наш вариант по умолчанию);
-- `VID:PID=303A:...` — USB встроен в сам чип → это **S2 или C3**.
+## 3. What is on the board
 
-Покажи вывод Claude — он подберёт настройки. В `platformio.ini` уже готовы
-конфигурации под все три варианта (`esp32mini`, `s2mini`, `c3mini`).
+- **Metal-can module** — the ESP32-S3 itself: processor and flash inside; the
+  zig-zag trace on the board edge is the printed Wi-Fi antenna.
+- **USB connector** — power **and** the data link to the computer. On the S3
+  the USB goes straight into the chip (there is no CH340/CP2102 bridge).
+- **Voltage regulator** — turns the 5 V from USB into 3.3 V for the chip.
+- **Buttons**: RST (also EN) — reset; BOOT (also IO0) — enters flashing mode.
+- **Pin headers (GPIO)** — where LEDs, buttons and sensors connect.
 
-## 3. Что на плате
+⚠️ **Golden rule**: ESP32 pins are **3.3 V**. Putting 5 V on a GPIO burns the
+pin. Powering the board over USB is fine and expected.
 
-- **Модуль с металлической крышкой** — сам ESP32: внутри процессор,
-  flash-память; зигзаг на краю платы — печатная антенна Wi-Fi.
-- **USB-разъём** — питание + канал связи с компьютером.
-- **USB-UART мост** (мелкий чип рядом с USB, обычно CH340 или CP2102) —
-  переводчик между USB компьютера и последовательным портом ESP32.
-  У S2/C3 его нет: USB заведён прямо в чип.
-- **Стабилизатор питания** — из 5 В от USB делает 3.3 В для чипа.
-- **Кнопки**: RST (она же EN) — перезагрузка; BOOT (она же IO0) — режим
-  прошивки (обычно жать не нужно, всё автоматически).
-- **Гребёнки ножек (GPIO)** — сюда подключаются светодиоды, кнопки, датчики.
+## 4. What the ESP32 can do
 
-⚠️ **Главное правило**: ножки ESP32 рассчитаны на **3.3 В**. Подать 5 В на
-GPIO = сжечь ножку. Питать плату по USB — можно и нужно.
-
-## 4. Что умеет ESP32
-
-| Возможность | Что это | Примеры применения |
+| Capability | What it is | Example uses |
 |---|---|---|
-| GPIO | цифровой вход/выход (0 или 1) | светодиоды, кнопки, реле |
-| PWM | быстрое «мерцание» с заданной скважностью | яркость света, сервоприводы, пищалка |
-| ADC | измерение напряжения на ножке | потенциометр, датчик освещённости |
-| DAC | выдача напряжения (только классика) | простенький звук |
-| Touch | сенсорные входы | кнопка из куска фольги |
-| I2C | шина для умных датчиков | OLED-экран, датчик BME280 |
-| SPI | быстрая шина | SD-карта, цветной дисплей |
-| UART ×3 | последовательные порты | GPS-модуль, связь с другой платой |
-| Wi-Fi | полноценный 2.4 ГГц | веб-сервер, запросы в интернет, MQTT |
-| Bluetooth/BLE | классика и C3 | связь с телефоном |
-| Deep sleep | сон с потреблением ~10 мкА | годы работы от батарейки |
-| RMT | точные тайминги | адресные ленты WS2812 |
+| GPIO | digital in/out (0 or 1) | LEDs, buttons, relays |
+| PWM | fast on/off with a set duty cycle | LED brightness, servos, buzzer |
+| ADC | measure a voltage on a pin | potentiometer, light sensor |
+| Touch | capacitive inputs | a button made of foil |
+| I2C | bus for smart sensors | OLED screen, BME280 sensor |
+| SPI | fast bus | SD card, colour display |
+| UART | serial ports | GPS module, link to another board |
+| USB (native) | full USB device | this project: keyboard + mouse + serial |
+| Wi-Fi | full 2.4 GHz | web server, internet requests, MQTT |
+| BLE | Bluetooth Low Energy | talk to a phone |
+| Deep sleep | ~10 µA sleep | years on a battery |
+| RMT | precise timing | addressable WS2812 strips |
 
-## 5. Как твой код попадает на плату
+## 5. How your code gets onto the board
 
-1. Ты пишешь C++ в `src/main.cpp`.
-2. PlatformIO компилирует его в машинный код → файл `firmware.bin`
-   (компилятор и библиотеки PlatformIO скачивает сам при первой сборке).
-3. Утилита esptool через COM-порт переводит плату в режим прошивки и
-   записывает firmware.bin во flash-память.
-4. Плата перезагружается — твой код становится единственным хозяином чипа.
+1. You write C++ in `src/main.cpp`.
+2. PlatformIO compiles it into machine code → `firmware.bin` (it downloads the
+   compiler and libraries itself on the first build).
+3. esptool puts the board into flashing mode over USB and writes `firmware.bin`
+   into flash.
+4. The board reboots and your code becomes the only program on the chip.
 
-Модель программы во фреймворке Arduino предельно простая:
+The Arduino program model is very simple:
 
 ```cpp
-void setup() { /* выполняется один раз при старте */ }
-void loop()  { /* повторяется бесконечно */ }
+void setup() { /* runs once at start */ }
+void loop()  { /* repeats forever    */ }
 ```
 
-(Под капотом на ESP32 крутится FreeRTOS — настоящая многозадачность на двух
-ядрах. Доберёмся и до неё.)
+(Under the hood the ESP32 runs FreeRTOS — real multitasking across both cores.
+There is plenty of room to grow into that later.)
 
-## 6. Как общаться с ESP32 программно
+### Flashing a USB-HID firmware — the one catch
 
-Твой главный вопрос — вот три уровня, от простого к крутому:
+Because this firmware turns the board into a USB keyboard/mouse (USB-OTG mode),
+the temporary programming port disappears while it runs, and esptool's
+auto-reset does not work over native USB. So:
 
-### Уровень 1: Serial через USB-кабель (уже настроено)
+1. **Enter download mode** by hand: unplug USB, hold **BOOT**, plug back in,
+   release BOOT.
+2. Flash: `python -m platformio run -t upload`.
+3. **Power-cycle** the board (unplug/replug, or press RST) so it boots the app.
+   A software reset does not reliably start the app on native USB.
 
-Плата и компьютер обмениваются байтами через последовательный порт.
-На плате: `Serial.println(...)` шлёт текст компьютеру, `Serial.read()` читает
-присланное. На компьютере — монитор PlatformIO или Python с pyserial.
+## 6. How this project talks to the computer
 
-Наша первая прошивка (`src/main.cpp`) ровно это и делает: слушает команды
-(`help`, `info`, `led on`...) и отвечает. `scripts/serial_chat.py` — вторая
-половина диалога со стороны ПК. Протокол команд ты придумываешь сам — это
-первый шаг к собственным устройствам.
+This is the heart of the project: making the board a **composite USB device**
+so one cable presents three devices at once.
 
-### Уровень 2: Wi-Fi
+### Level 1 — native USB (what this firmware does)
 
-Плата подключается к домашнему роутеру, и дальше:
+- **CDC (virtual COM port)** — the computer sends text command lines; the board
+  reads them with `USBSerial`.
+- **HID keyboard + HID mouse** — the board sends real key presses and cursor
+  movement. The host sees genuine input devices, no drivers needed.
 
-- **веб-сервер на плате** — открываешь с телефона страницу
-  `http://192.168.x.x`, жмёшь кнопки, плата реагирует; провода не нужны;
-- **плата сама ходит в интернет** — забрать погоду, дёрнуть API, написать в
-  Telegram;
-- **MQTT** — стандартный протокол умного дома: плата публикует показания
-  датчиков и подписывается на команды (так работает Home Assistant).
+You type a command such as `type hello`, `key enter`, or `moveto 16384 16384`
+into the COM port, and the firmware performs it as real input. See the
+[README](../README.md) for the full command reference, or send `help` to the
+board. `scripts/serial_chat.py` is the host-side console for this.
 
-### Уровень 3: BLE (Bluetooth Low Energy)
+### Level 2 — Wi-Fi
 
-Общение с телефоном напрямую, без роутера. Чуть сложнее, но интересно.
+The board joins your router and can then run a web server you open from a
+phone, reach out to the internet (weather, an API, a Telegram message), or
+speak MQTT for home-automation setups.
 
-Начинаем с уровня 1, остальное добавим по шагам.
+### Level 3 — BLE (Bluetooth Low Energy)
 
-## 7. Рабочий процесс
+Talk to a phone directly, without a router. The S3 supports BLE (not classic
+Bluetooth).
 
-Команды выполняются в папке проекта (`pio` — короткая форма, если она не
-находится, используй `python -m platformio`):
+## 7. Workflow
 
-| Действие | Команда |
+Run commands inside the project folder. If the `pio` shortcut is not found, use
+`python -m platformio` instead.
+
+| Action | Command |
 |---|---|
-| Собрать прошивку | `python -m platformio run` |
-| Собрать и прошить | `python -m platformio run -t upload` |
-| Смотреть вывод платы | `python -m platformio device monitor` (выход: Ctrl+C) |
-| Чат с платой | `python scripts/serial_chat.py` |
-| Список COM-портов | `python -m serial.tools.list_ports -v` |
+| Build the firmware | `python -m platformio run` |
+| Build and flash | `python -m platformio run -t upload` |
+| Watch board output | `python -m platformio device monitor` (Ctrl+C to exit) |
+| Command console | `python scripts/serial_chat.py` |
+| List COM ports | `python -m serial.tools.list_ports -v` |
 
-Важно: порт может держать только одна программа. Перед прошивкой закрой
-монитор/чат.
+Only one program can hold the port at a time — close the monitor/console before
+flashing.
 
-**Самый простой путь**: открой Claude Code в этой папке и говори
-по-человечески — «прошей плату», «почему не собирается», «добавь чтение
-кнопки на GPIO4». Сборку, прошивку и чтение монитора Claude делает сам.
+## 8. Where to go next
 
-## 8. Дорожная карта обучения
+The firmware already does native USB HID (Level 1). Good directions from here,
+each one a small step:
 
-1. ✅ **Мигалка + команды по Serial** — уже написано, осталось прошить
-2. **Кнопка** — читаем GPIO, узнаём про подтяжку и дребезг контактов
-3. **PWM** — плавно меняем яркость светодиода
-4. **ADC** — крутим потенциометр, читаем напряжение
-5. **I2C-датчик** — BME280 (температура/влажность/давление) или OLED-экран
-6. **Wi-Fi веб-сервер** — управляем платой с телефона
-7. **MQTT + deep sleep** — автономный датчик, живущий от батарейки
+1. **A physical button** — read a GPIO, learn about pull-ups and contact
+   bounce; wire it to trigger a stored keystroke.
+2. **The RGB LED** — drive the WS2812 on GPIO47 to show status in colour.
+3. **PWM** — smoothly fade an LED's brightness.
+4. **ADC** — read a potentiometer's voltage.
+5. **An I2C sensor** — BME280 (temperature/humidity/pressure) or an OLED.
+6. **Wi-Fi web server** — control the board from a phone.
+7. **BLE HID** — a wireless keyboard/mouse instead of USB.
 
-Каждый шаг — одна просьба к Claude. Не спеши: на каждом шаге разбирай код.
+Take each step slowly and read the code as you go.
 
-## 9. Если что-то не работает
+## 9. If something does not work
 
-| Симптом | Причина и лечение |
+| Symptom | Cause and fix |
 |---|---|
-| Платы нет в списке портов | 1) кабель «только зарядка» — нужен кабель с данными; 2) нет драйвера USB-чипа: CH340 → сайт wch-ic.com, CP210x → Silicon Labs; 3) попробуй другой USB-порт |
-| `Failed to connect to ESP32` при прошивке | зажми кнопку BOOT, пока в логе идёт `Connecting...`, потом отпусти |
-| `could not open port` / порт занят | закрой монитор, чат или Arduino IDE — порт держит только одна программа |
-| В мониторе кракозябры | скорость не совпадает — должно быть 115200 |
-| Плата перезагружается при открытии порта | это нормально: открытие порта дёргает линию сброса, увидишь стартовый лог загрузчика |
+| Board not in the port list | 1) a "charge only" cable — use a data cable; 2) try another USB port; 3) enter download mode (hold BOOT while plugging in) |
+| No COM port after flashing HID firmware | native USB has no auto-reset; power-cycle the board (unplug/replug or RST) so the app starts |
+| `Failed to connect to ESP32` while flashing | enter download mode: hold BOOT, tap RST, release BOOT, then flash |
+| `could not open port` / port busy | close the monitor, console, or Arduino IDE — only one program can hold the port |
+| Garbled text in the monitor | baud rate mismatch — it must be 115200 |
+| Board resets when the port opens | normal: opening the port toggles the reset line |
 
-## 10. Куда смотреть дальше
+## 10. Further reading
 
-- randomnerdtutorials.com/projects-esp32 — большая коллекция пошаговых
-  проектов (англ., код универсален)
-- docs.espressif.com — официальная документация Espressif
-- docs.platformio.org — про сборку и конфигурацию
+- randomnerdtutorials.com/projects-esp32 — a large collection of step-by-step
+  projects (code is universal)
+- docs.espressif.com — official Espressif documentation
+- docs.platformio.org — build and configuration reference
