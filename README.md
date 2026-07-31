@@ -90,28 +90,59 @@ keep it focused before sending keyboard/mouse commands.
 
 ### Command reference
 
+**Keyboard**
+
 | Command | Action |
 |---|---|
 | `type <text>` | Type a string (US layout, ASCII) |
-| `key <name>` | Tap a special key: `enter esc tab space backspace delete up down left right home end pgup pgdn ins f1..f12` |
-| `combo <a>+<b>+…` | Key combo, e.g. `combo ctrl+c`, `combo ctrl+alt+del`, `combo win+r`, `combo alt+tab` |
-| `hold <key>` | Press and hold a key or modifier |
+| `key <name>` | Tap a key or modifier: `enter esc tab space bksp del ins up down left right home end pgup pgdn caps f1..f12 ctrl shift alt win` |
+| `combo <a>+<b>+…` | Key combo, e.g. `combo ctrl+c`, `combo ctrl+alt+del`, `combo win+r` |
+| `keydown <name>` | Press and hold one key |
+| `keyup <name>` | Release **one** key (not everything) — enables e.g. hold-and-tap |
+| `hold <name>` | Hold one key (until `unhold` or the deadman timer) |
+| `hold <name> <ms>` | Hold, then auto-release after `ms` (non-blocking) |
+| `seq <k1> <k2> …` | Tap each key in order, short fixed gap |
 | `unhold` | Release everything held |
-| `move <dx> <dy>` | Move mouse cursor (pixels, negative allowed) |
+
+**Mouse**
+
+| Command | Action |
+|---|---|
+| `move <dx> <dy>` | Relative move, each `-32767..32767` |
+| `moveto <x> <y>` | Absolute move, `x,y = 0..32767` (immune to pointer acceleration) |
+| `park` | Cursor to top-left corner `(0,0)` |
 | `click [btn]` | Click `left` (default), `right`, or `middle` |
 | `dblclick [btn]` | Double-click |
 | `down <btn>` / `up <btn>` | Press / release a mouse button |
-| `scroll <n>` | Scroll wheel (`+` up, `-` down) |
-| `arm` / `disarm` | Enable / block all input (safety) |
+| `mousehold <btn> <ms>` | Press, auto-release after `ms` (non-blocking) |
+| `scroll <n>` | Scroll wheel (`+` up, `-` down), `-32767..32767` |
+
+`moveto` and `park` use an **absolute-positioning HID mouse** (like a graphics
+tablet): the cursor lands exactly at the given point, unaffected by Windows
+pointer acceleration. They address the **primary monitor** only (`0,0` is its
+top-left corner).
+
+**Service**
+
+| Command | Action |
+|---|---|
+| `arm` / `disarm` | Enable / block all input (`disarm` also releases everything) |
 | `ping` / `info` / `help` | Diagnostics and command list |
+
+**Safety.** A deadman timer releases everything if the board is `armed` and
+something is held with no pending timer after 5 s idle; timed holds
+(`hold`/`mousehold <ms>`) always run to completion. The firmware executes
+commands deterministically — all timing is the host's responsibility.
 
 Example session:
 
 ```
 type Hello from ESP32-S3
 key enter
-combo ctrl+a
-move 150 -40
+keydown shift
+seq h e l l o
+keyup shift
+moveto 16384 16384
 click
 ```
 
